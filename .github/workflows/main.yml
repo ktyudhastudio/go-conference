@@ -1,0 +1,47 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: deploy
+
+env:
+  DOCKER_HOST: ssh://${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
+
+jobs:
+  test:
+    runs-on: self-hosted-runner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -race ./...
+
+  # image dibuild langsung di daemon server tujuan, jadi tidak perlu registry
+  build:
+    needs: test
+    runs-on: self-hosted-runner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ssh
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+      - run: echo "APP_HOST=${{ vars.APP_HOST }}" > .env
+      - run: docker compose build
+
+  deploy:
+    needs: build
+    runs-on: self-hosted-runner
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ssh
+        with:
+          host: ${{ vars.DEPLOY_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+      - run: echo "APP_HOST=${{ vars.APP_HOST }}" > .env
+      - run: docker compose up -d --no-build
+      - run: docker image prune -f

@@ -38,8 +38,8 @@ func Load() Config {
 		UDPPortMin: port("APP_UDP_PORT_MIN"),
 		UDPPortMax: port("APP_UDP_PORT_MAX"),
 
-		CFTurnKeyID:    getenv("CF_TURN_KEY_ID", ""),
-		CFTurnAPIToken: getenv("CF_TURN_API_TOKEN", ""),
+		CFTurnKeyID:    strings.TrimSpace(getenv("CF_TURN_KEY_ID", "")),
+		CFTurnAPIToken: strings.TrimSpace(getenv("CF_TURN_API_TOKEN", "")),
 		TurnURLs:       split(getenv("TURN_URLS", "")),
 		TurnUsername:   getenv("TURN_USERNAME", ""),
 		TurnCredential: getenv("TURN_CREDENTIAL", ""),

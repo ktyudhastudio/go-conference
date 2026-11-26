@@ -74,6 +74,17 @@ type SdpService struct {
 	config    webrtc.Configuration
 	registry  *core.TrackRegistry
 	onQuality func(meetingID, userID string, q core.Quality)
+	turn      interface {
+		ServerTURN(ctx context.Context) []webrtc.ICEServer
+	}
+}
+
+// SetICEProvider adds TURN relay candidates to the server's own peer connections,
+// so clients outside the LAN can connect without any open port.
+func (s *SdpService) SetICEProvider(p interface {
+	ServerTURN(ctx context.Context) []webrtc.ICEServer
+}) {
+	s.turn = p
 }
 
 // SetQualityReporter registers where publisher connection measurements go (the presence hub).
@@ -93,7 +104,11 @@ func (s *SdpService) Negotiate(ctx context.Context, isSender bool, meetingID, us
 		return "", errors.New("invalid sdp: " + err.Error())
 	}
 
-	pc, err := s.api.NewPeerConnection(s.config)
+	cfg := s.config
+	if s.turn != nil {
+		cfg.ICEServers = append(append([]webrtc.ICEServer{}, cfg.ICEServers...), s.turn.ServerTURN(ctx)...)
+	}
+	pc, err := s.api.NewPeerConnection(cfg)
 	if err != nil {
 		return "", err
 	}

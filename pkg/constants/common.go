@@ -9,6 +9,10 @@ const (
 	PeerService    = "PeerService"
 	PeerController = "PeerController"
 
+	ICEProvider   = "ICEProvider"
+	IceService    = "IceService"
+	IceController = "IceController"
+
 	PresenceHub        = "PresenceHub"
 	PresenceService    = "PresenceService"
 	PresenceController = "PresenceController"

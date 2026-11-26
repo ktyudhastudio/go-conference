@@ -81,8 +81,10 @@ jobs:
           APP_UDP_PORT_MIN: ${{ secrets.APP_UDP_PORT_MIN }}
           APP_UDP_PORT_MAX: ${{ secrets.APP_UDP_PORT_MAX }}
           STUN_SERVER: ${{ secrets.STUN_SERVER }}
+          CF_TURN_KEY_ID: ${{ secrets.CF_TURN_KEY_ID }}
+          CF_TURN_API_TOKEN: ${{ secrets.CF_TURN_API_TOKEN }}
         run: |
-          for k in APP_ENV APP_NAME APP_HOST APP_PORT APP_UDP_PORT_MIN APP_UDP_PORT_MAX STUN_SERVER; do
+          for k in APP_ENV APP_NAME APP_HOST APP_PORT APP_UDP_PORT_MIN APP_UDP_PORT_MAX STUN_SERVER CF_TURN_KEY_ID CF_TURN_API_TOKEN; do
             printf '%s=%s\n' "$k" "${!k}"
           done > .env
       - run: docker compose pull
@@ -90,3 +92,5 @@ jobs:
       - run: docker image prune -f
       - if: always()
         run: docker logout ghcr.io
+      - if: always()
+        run: rm -f .env

@@ -8,22 +8,26 @@ on:
 concurrency: deploy
 
 env:
+  # cache Go di folder kerja runner (bind-mount host) -> tidak unduh/kompilasi ulang
+  GOMODCACHE: /opt/github-runner/work/.cache/gomod
+  GOCACHE: /opt/github-runner/work/.cache/gobuild
   DOCKER_HOST: ssh://${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
 
 jobs:
   test:
-    runs-on: self-hosted-runner
+    runs-on: [self-hosted, docker]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false
       - run: go test -race ./...
 
   # image dibuild langsung di daemon server tujuan, jadi tidak perlu registry
   build:
     needs: test
-    runs-on: self-hosted-runner
+    runs-on: [self-hosted, docker]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ssh
@@ -35,7 +39,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: self-hosted-runner
+    runs-on: [self-hosted, docker]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ssh

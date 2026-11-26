@@ -15,7 +15,8 @@ func RegisterDependencies(injector *do.Injector) {
 	do.ProvideNamedValue(injector, constants.Config, config.Load())
 
 	do.ProvideNamed(injector, constants.WebRTCAPI, func(i *do.Injector) (*webrtc.API, error) {
-		return core.NewWebRTCAPI()
+		cfg := do.MustInvokeNamed[config.Config](i, constants.Config)
+		return core.NewWebRTCAPI(core.NetworkOptions(cfg))
 	})
 
 	do.ProvideNamed(injector, constants.TrackRegistry, func(i *do.Injector) (*core.TrackRegistry, error) {
@@ -26,7 +27,10 @@ func RegisterDependencies(injector *do.Injector) {
 		cfg := do.MustInvokeNamed[config.Config](i, constants.Config)
 		api := do.MustInvokeNamed[*webrtc.API](i, constants.WebRTCAPI)
 		reg := do.MustInvokeNamed[*core.TrackRegistry](i, constants.TrackRegistry)
-		return services.NewSdpService(api, core.PeerConfig(cfg), reg), nil
+		svc := services.NewSdpService(api, core.PeerConfig(cfg), reg)
+		hub := do.MustInvokeNamed[*core.PresenceHub](i, constants.PresenceHub)
+		svc.SetQualityReporter(hub.SetQuality)
+		return svc, nil
 	})
 
 	do.ProvideNamed(injector, constants.SdpController, func(i *do.Injector) (*controller.SdpController, error) {
@@ -42,5 +46,20 @@ func RegisterDependencies(injector *do.Injector) {
 	do.ProvideNamed(injector, constants.PeerController, func(i *do.Injector) (*controller.PeerController, error) {
 		svc := do.MustInvokeNamed[*services.PeerService](i, constants.PeerService)
 		return controller.NewPeerController(svc), nil
+	})
+
+	do.ProvideNamed(injector, constants.PresenceHub, func(i *do.Injector) (*core.PresenceHub, error) {
+		reg := do.MustInvokeNamed[*core.TrackRegistry](i, constants.TrackRegistry)
+		return core.NewPresenceHub(reg), nil
+	})
+
+	do.ProvideNamed(injector, constants.PresenceService, func(i *do.Injector) (*services.PresenceService, error) {
+		hub := do.MustInvokeNamed[*core.PresenceHub](i, constants.PresenceHub)
+		return services.NewPresenceService(hub), nil
+	})
+
+	do.ProvideNamed(injector, constants.PresenceController, func(i *do.Injector) (*controller.PresenceController, error) {
+		svc := do.MustInvokeNamed[*services.PresenceService](i, constants.PresenceService)
+		return controller.NewPresenceController(svc), nil
 	})
 }

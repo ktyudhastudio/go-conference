@@ -72,7 +72,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_USER: ${{ github.actor }}
-      - run: echo "APP_HOST=${{ secrets.APP_HOST }}" > .env
+      - name: Write .env
+        env:
+          APP_ENV: ${{ secrets.APP_ENV }}
+          APP_NAME: ${{ secrets.APP_NAME }}
+          APP_HOST: ${{ secrets.APP_HOST }}
+          APP_PORT: ${{ secrets.APP_PORT }}
+          APP_UDP_PORT_MIN: ${{ secrets.APP_UDP_PORT_MIN }}
+          APP_UDP_PORT_MAX: ${{ secrets.APP_UDP_PORT_MAX }}
+          STUN_SERVER: ${{ secrets.STUN_SERVER }}
+        run: |
+          for k in APP_ENV APP_NAME APP_HOST APP_PORT APP_UDP_PORT_MIN APP_UDP_PORT_MAX STUN_SERVER; do
+            printf '%s=%s\n' "$k" "${!k}"
+          done > .env
       - run: docker compose pull
       - run: docker compose up -d --no-build
       - run: docker image prune -f

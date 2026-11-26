@@ -61,6 +61,13 @@ jobs:
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Debug SSH (sementara)
+        env:
+          U: ${{ secrets.DEPLOY_USER }}
+          H: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          echo "Kunci yang dimuat runner:"; ssh-add -l
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -v "$U@$H" true 2>&1 | grep -E "Offering|Authentications|Server accepts|Permission|debug1: Authentication succeeded" || true
       - run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

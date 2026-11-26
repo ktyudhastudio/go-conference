@@ -4,6 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/do"
 
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	"go-conference/config"
 	"go-conference/controller"
 	"go-conference/pkg/constants"
 )
@@ -18,7 +22,11 @@ func Register(r *gin.Engine, injector *do.Injector) {
 
 	presence := do.MustInvokeNamed[*controller.PresenceController](injector, constants.PresenceController)
 
-	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	r.GET("/health", health)
+
+	if do.MustInvokeNamed[config.Config](injector, constants.Config).SwaggerEnabled {
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	webrtc := r.Group("/webrtc")
 	webrtc.GET("/m/:meetingId/peers", peer.List)
@@ -29,3 +37,12 @@ func Register(r *gin.Engine, injector *do.Injector) {
 
 	r.GET("/ws/m/:meetingId", presence.Socket)
 }
+
+// health reports liveness.
+//
+//	@Summary	Cek server hidup
+//	@Tags		System
+//	@Produce	json
+//	@Success	200	{object}	controller.HealthResponse
+//	@Router		/health [get]
+func health(c *gin.Context) { c.JSON(200, controller.HealthResponse{Status: "ok"}) }

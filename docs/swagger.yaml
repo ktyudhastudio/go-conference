@@ -1,0 +1,281 @@
+basePath: /
+definitions:
+  controller.ErrorResponse:
+    properties:
+      error:
+        example: isSender must be a boolean
+        type: string
+    type: object
+  controller.HealthResponse:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
+  controller.IceResponse:
+    properties:
+      iceServers:
+        items:
+          $ref: '#/definitions/controller.IceServerDoc'
+        type: array
+    type: object
+  controller.IceServerDoc:
+    properties:
+      credential:
+        type: string
+      urls:
+        example:
+        - turn:turn.cloudflare.com:3478?transport=tcp
+        items:
+          type: string
+        type: array
+      username:
+        type: string
+    type: object
+  controller.MeetingsResponse:
+    properties:
+      meetings:
+        items:
+          $ref: '#/definitions/core.MeetingInfo'
+        type: array
+    type: object
+  controller.PeersResponse:
+    properties:
+      peers:
+        example:
+        - u-abc
+        - u-def
+        items:
+          type: string
+        type: array
+    type: object
+  controller.Sdp:
+    properties:
+      Sdp:
+        type: string
+    type: object
+  core.MeetingInfo:
+    properties:
+      id:
+        type: string
+      participants:
+        type: integer
+      startedAt:
+        description: unix ms
+        type: integer
+    type: object
+  core.Participant:
+    properties:
+      camera:
+        type: boolean
+      mic:
+        type: boolean
+      publishing:
+        description: media connection is live (subscribe-able)
+        type: boolean
+      quality:
+        allOf:
+        - $ref: '#/definitions/core.Quality'
+        description: Quality is the latest connection measurement; absent until the
+          first sample.
+      userId:
+        type: string
+    type: object
+  core.Quality:
+    properties:
+      bitrateKbps:
+        type: integer
+      jitterMs:
+        type: integer
+      level:
+        description: good | fair | poor
+        type: string
+      lossPct:
+        type: number
+      rttMs:
+        type: integer
+    type: object
+  core.State:
+    properties:
+      blocked:
+        items:
+          type: string
+        type: array
+      participants:
+        items:
+          $ref: '#/definitions/core.Participant'
+        type: array
+    type: object
+info:
+  contact: {}
+  description: SFU signaling server (Gin + Pion WebRTC). Tanpa autentikasi. SDP dikirim
+    sebagai base64(JSON SessionDescription) di {"Sdp":"..."}.
+  title: go-conference API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.HealthResponse'
+      summary: Cek server hidup
+      tags:
+      - System
+  /webrtc/ice:
+    get:
+      description: Dipakai klien untuk new RTCPeerConnection({iceServers}). Kredensial
+        TURN dibuat via Cloudflare dan di-cache.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.IceResponse'
+      summary: Daftar ICE server (STUN + TURN)
+      tags:
+      - WebRTC
+  /webrtc/m/{meetingId}/participants:
+    get:
+      parameters:
+      - description: ID rapat
+        in: path
+        name: meetingId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/core.State'
+      summary: Snapshot peserta rapat
+      tags:
+      - Presence
+  /webrtc/m/{meetingId}/peers:
+    get:
+      parameters:
+      - description: ID rapat
+        in: path
+        name: meetingId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.PeersResponse'
+      summary: Publisher aktif di rapat
+      tags:
+      - WebRTC
+  /webrtc/meetings:
+    get:
+      description: In-memory; rapat tanpa peserta tidak tampil. startedAt = unix ms.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.MeetingsResponse'
+      summary: Rapat yang sedang aktif
+      tags:
+      - Presence
+  /webrtc/sdp/m/{meetingId}/c/{userID}/p/{peerId}/s/{isSender}:
+    post:
+      consumes:
+      - application/json
+      description: 'isSender=true: publish video+audio. isSender=false: subscribe
+        ke peerId. ICE non-trickle: server menunggu gathering selesai sebelum membalas.
+        Sdp = base64(JSON SessionDescription).'
+      parameters:
+      - description: ID rapat
+        in: path
+        name: meetingId
+        required: true
+        type: string
+      - description: ID pemanggil
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: 'Subscribe: userId publisher yang dituju. Publish: isi ''-'''
+        in: path
+        name: peerId
+        required: true
+        type: string
+      - description: true = publish, false = subscribe
+        in: path
+        name: isSender
+        required: true
+        type: boolean
+      - description: SDP offer
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.Sdp'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: SDP answer
+          schema:
+            $ref: '#/definitions/controller.Sdp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: Negosiasi SDP (publish / subscribe)
+      tags:
+      - WebRTC
+  /ws/m/{meetingId}:
+    get:
+      description: |-
+        Upgrade ke WebSocket (Swagger UI tidak bisa menjalankannya; uji dengan wscat). Join = membuka socket.
+        Server -> klien: {"type":"state","participants":[...],"blocked":[...]}, {"type":"history","messages":[{id,from,text,at}]}, {"type":"chat","id":1,"from":"u","text":"..","at":1764200000000}, {"type":"command","action":"mute_mic|camera_off|kick"}.
+        Klien -> server: {"type":"media","camera":true,"mic":false}, {"type":"chat","text":".."} (maks 1000 karakter), {"type":"admin","action":"mute_mic|camera_off|kick|allow","target":"userId"} (hanya observer=true).
+        Ping server tiap 15 dtk; putus bila tak ada pong/pesan 40 dtk.
+      parameters:
+      - description: ID rapat
+        in: path
+        name: meetingId
+        required: true
+        type: string
+      - description: ID peserta
+        in: query
+        name: userId
+        required: true
+        type: string
+      - description: true = admin, tidak terdaftar sebagai peserta
+        in: query
+        name: observer
+        type: boolean
+      responses:
+        "101":
+          description: Switching Protocols
+          schema:
+            type: string
+        "400":
+          description: userId kosong
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "403":
+          description: userId diblokir admin (kick) sampai di-allow
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: WebSocket presence, chat, perintah admin
+      tags:
+      - Presence
+swagger: "2.0"

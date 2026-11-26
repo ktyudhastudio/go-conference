@@ -3,30 +3,29 @@ name: deploy
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 concurrency: deploy
 
 env:
-  # cache Go di folder kerja runner (bind-mount host) -> tidak unduh/kompilasi ulang
-  GOMODCACHE: /opt/github-runner/work/.cache/gomod
-  GOCACHE: /opt/github-runner/work/.cache/gobuild
   DOCKER_HOST: ssh://${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
 
 jobs:
+  # test di runner GitHub: tidak butuh server kita, aman juga untuk PR
   test:
-    runs-on: [self-hosted, docker]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false
       - run: go test -race ./...
 
   # image dibuild langsung di daemon server tujuan, jadi tidak perlu registry
   build:
     needs: test
+    if: github.event_name == 'push'
     runs-on: [self-hosted, docker]
     steps:
       - uses: actions/checkout@v4

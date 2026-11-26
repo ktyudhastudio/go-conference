@@ -33,7 +33,7 @@ func Load() Config {
 	return Config{
 		AppEnv:     getenv("APP_ENV", "production"),
 		Port:       getenv("APP_PORT", getenv("GOLANG_PORT", "8080")),
-		StunServer: getenv("STUN_SERVER", "stun:stun.l.google.com:19302"),
+		StunServer: getenv("STUN_SERVER", "stun:stun.cloudflare.com:3478"),
 		Host:       getenv("APP_HOST", ""),
 		UDPPortMin: port("APP_UDP_PORT_MIN"),
 		UDPPortMax: port("APP_UDP_PORT_MAX"),

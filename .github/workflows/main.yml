@@ -6,7 +6,8 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency: deploy
+# deploy antre satu-satu; run PR tidak boleh menggeser antrean deploy
+concurrency: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'deploy' }}
 
 env:
   DOCKER_HOST: ssh://${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
@@ -25,7 +26,7 @@ jobs:
   # image dibuild langsung di daemon server tujuan, jadi tidak perlu registry
   build:
     needs: test
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
     runs-on: [self-hosted, docker]
     steps:
       - uses: actions/checkout@v4

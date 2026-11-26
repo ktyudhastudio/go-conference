@@ -21,3 +21,12 @@ func TestServeAddr(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestLoadTurn(t *testing.T) {
+	t.Setenv("TURN_URLS", " turn:a:3478?transport=udp , ,turns:a:443?transport=tcp")
+	t.Setenv("CF_TURN_KEY_ID", "k")
+	c := Load()
+	if len(c.TurnURLs) != 2 || c.TurnURLs[0] != "turn:a:3478?transport=udp" || c.CFTurnKeyID != "k" {
+		t.Fatalf("%+v", c)
+	}
+}

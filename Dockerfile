@@ -8,6 +8,6 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/server main.go
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/server /server
-ENV APP_ENV=production APP_PORT=8080
+ENV APP_ENV=production APP_PORT=8080 GIN_MODE=release
 EXPOSE 8080/tcp 50000-50100/udp
 ENTRYPOINT ["/server"]

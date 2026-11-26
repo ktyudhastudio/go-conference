@@ -56,7 +56,7 @@ func TestICECloudflareArrayShapeCachedAndFiltered(t *testing.T) {
 		t.Fatalf("client servers: %+v", got)
 	}
 	srv2 := p.ServerTURN(ctx)
-	if len(srv2) != 1 || srv2[0].URLs[0] != "turn:x:3478?transport=udp" {
+	if len(srv2) != 1 || srv2[0].URLs[0] != "turn:x:3478?transport=tcp" {
 		t.Fatalf("server turn: %+v", srv2)
 	}
 	if hits != 1 {

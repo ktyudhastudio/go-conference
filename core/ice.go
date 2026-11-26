@@ -74,22 +74,45 @@ func (p *ICEProvider) ClientServers(ctx context.Context) []ICEServer {
 	return append(out, p.turn(ctx)...)
 }
 
-// ServerTURN is what the SFU's own peer connections use: a single UDP TURN URL per server,
-// to keep ICE gathering fast. Empty when TURN is not configured or unreachable.
+// ServerTURN is what the SFU's own peer connections use: a single TURN URL per server (TCP
+// preferred, see pickServerTurn), to keep ICE gathering fast. Empty when TURN is not configured or unreachable.
 func (p *ICEProvider) ServerTURN(ctx context.Context) []webrtc.ICEServer {
 	var out []webrtc.ICEServer
 	for _, s := range p.turn(ctx) {
-		if u := pickUDPTurn(s.URLs); u != "" {
+		if u := pickServerTurn(s.URLs); u != "" {
 			out = append(out, ICEServer{URLs: []string{u}, Username: s.Username, Credential: s.Credential}.Pion())
 		}
 	}
 	return out
 }
 
-func pickUDPTurn(urls []string) string {
-	for _, u := range urls {
-		l := strings.ToLower(u)
-		if strings.HasPrefix(l, "turn:") && (strings.Contains(l, "transport=udp") || !strings.Contains(l, "transport=")) {
+// pickServerTurn chooses the one TURN URL the server uses. TCP first: many server networks
+// drop UDP to the TURN host, and then ICE gathering stalls ~8s with no relay candidate (clients
+// outside the LAN cannot connect). A TURN-over-TCP connection still yields a UDP relay address.
+// Falls back to TLS, then UDP.
+func pickServerTurn(urls []string) string {
+	match := func(prefix string, transports ...string) string {
+		for _, t := range transports {
+			for _, u := range urls {
+				l := strings.ToLower(u)
+				if strings.HasPrefix(l, prefix) && strings.Contains(l, "transport="+t) {
+					return u
+				}
+			}
+		}
+		return ""
+	}
+	if u := match("turn:", "tcp"); u != "" {
+		return u
+	}
+	if u := match("turns:", "tcp"); u != "" {
+		return u
+	}
+	if u := match("turn:", "udp"); u != "" {
+		return u
+	}
+	for _, u := range urls { // no transport= means UDP
+		if l := strings.ToLower(u); strings.HasPrefix(l, "turn:") && !strings.Contains(l, "transport=") {
 			return u
 		}
 	}

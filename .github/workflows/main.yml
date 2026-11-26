@@ -61,8 +61,13 @@ jobs:
         with:
           host: ${{ vars.DEPLOY_HOST }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-      - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_USER: ${{ github.actor }}
       - run: echo "APP_HOST=${{ vars.APP_HOST }}" > .env
       - run: docker compose pull
       - run: docker compose up -d --no-build
       - run: docker image prune -f
+      - if: always()
+        run: docker logout ghcr.io

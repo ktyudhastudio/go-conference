@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -80,5 +81,18 @@ func TestICECloudflareFailureDegradesToStun(t *testing.T) {
 	p.cfToken = "wrong"
 	if got := p.ClientServers(context.Background()); len(got) != 1 {
 		t.Fatalf("want stun only, got %+v", got)
+	}
+}
+
+func TestICECloudflareDropsPort53(t *testing.T) {
+	var hits int32
+	srv := cfServer(t, `{"iceServers":[{"urls":["stun:x:3478","stun:x:53"]},{"urls":["turn:x:53?transport=udp","turn:x:3478?transport=udp","turns:x:443?transport=tcp"],"username":"u","credential":"c"}]}`, &hits)
+	defer srv.Close()
+	for _, s := range newCF(srv.URL).ClientServers(context.Background()) {
+		for _, u := range s.URLs {
+			if strings.Contains(u, ":53") {
+				t.Fatalf("port 53 url kept: %s", u)
+			}
+		}
 	}
 }

@@ -122,15 +122,15 @@ func (p *ICEProvider) turn(ctx context.Context) []ICEServer {
 }
 
 func (p *ICEProvider) fetchCloudflare(ctx context.Context) ([]ICEServer, error) {
-	var lastErr error
+	var errs []string
 	for _, path := range []string{"generate-ice-servers", "generate"} {
 		servers, err := p.cfRequest(ctx, path)
 		if err == nil {
 			return servers, nil
 		}
-		lastErr = err
+		errs = append(errs, err.Error())
 	}
-	return nil, lastErr
+	return nil, fmt.Errorf("%s (check CF_TURN_KEY_ID is the TURN key ID and CF_TURN_API_TOKEN its token)", strings.Join(errs, "; "))
 }
 
 func (p *ICEProvider) cfRequest(ctx context.Context, path string) ([]ICEServer, error) {
@@ -158,11 +158,30 @@ func (p *ICEProvider) cfRequest(ctx context.Context, path string) ([]ICEServer, 
 	}
 	var many []ICEServer
 	if err := json.Unmarshal(raw.IceServers, &many); err == nil && len(many) > 0 {
-		return many, nil
+		return dropPort53(many), nil
 	}
 	var one ICEServer // older shape: a single object
 	if err := json.Unmarshal(raw.IceServers, &one); err != nil || len(one.URLs) == 0 {
 		return nil, fmt.Errorf("%s: unexpected response", path)
 	}
-	return []ICEServer{one}, nil
+	return dropPort53([]ICEServer{one}), nil
+}
+
+// dropPort53 removes URLs on port 53: browsers time out on them, which would stall
+// non-trickle ICE gathering.
+func dropPort53(in []ICEServer) []ICEServer {
+	out := make([]ICEServer, 0, len(in))
+	for _, s := range in {
+		var urls []string
+		for _, u := range s.URLs {
+			if !strings.Contains(u, ":53?") && !strings.HasSuffix(u, ":53") {
+				urls = append(urls, u)
+			}
+		}
+		if len(urls) > 0 {
+			s.URLs = urls
+			out = append(out, s)
+		}
+	}
+	return out
 }

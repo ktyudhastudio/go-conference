@@ -16,6 +16,8 @@ type Config struct {
 	Host       string // APP_HOST: IP/hostname yang diiklankan ke browser untuk media
 	UDPPortMin uint16
 	UDPPortMax uint16
+	// SwaggerEnabled serves Swagger UI at /swagger/index.html (SWAGGER_ENABLED; default on only for APP_ENV=localhost).
+	SwaggerEnabled bool
 
 	// TURN relay so peers outside the LAN can connect without open ports.
 	// Option 1 (Cloudflare Realtime TURN, short-lived credentials generated via API):
@@ -30,13 +32,19 @@ type Config struct {
 // Load reads .env (if present) then environment variables, with defaults.
 func Load() Config {
 	_ = godotenv.Load(".env")
+	env := getenv("APP_ENV", "production")
+	swagger, err := strconv.ParseBool(os.Getenv("SWAGGER_ENABLED"))
+	if err != nil {
+		swagger = env == "localhost"
+	}
 	return Config{
-		AppEnv:     getenv("APP_ENV", "production"),
-		Port:       getenv("APP_PORT", getenv("GOLANG_PORT", "8080")),
-		StunServer: getenv("STUN_SERVER", "stun:stun.cloudflare.com:3478"),
-		Host:       getenv("APP_HOST", ""),
-		UDPPortMin: port("APP_UDP_PORT_MIN"),
-		UDPPortMax: port("APP_UDP_PORT_MAX"),
+		SwaggerEnabled: swagger,
+		AppEnv:         env,
+		Port:           getenv("APP_PORT", getenv("GOLANG_PORT", "8080")),
+		StunServer:     getenv("STUN_SERVER", "stun:stun.cloudflare.com:3478"),
+		Host:           getenv("APP_HOST", ""),
+		UDPPortMin:     port("APP_UDP_PORT_MIN"),
+		UDPPortMax:     port("APP_UDP_PORT_MAX"),
 
 		CFTurnKeyID:    strings.TrimSpace(getenv("CF_TURN_KEY_ID", "")),
 		CFTurnAPIToken: strings.TrimSpace(getenv("CF_TURN_API_TOKEN", "")),

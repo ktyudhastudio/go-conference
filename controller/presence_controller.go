@@ -61,11 +61,25 @@ type clientMessage struct {
 }
 
 // List: GET /webrtc/m/:meetingId/participants (snapshot, tanpa websocket)
+//
+//	@Summary	Snapshot peserta rapat
+//	@Tags		Presence
+//	@Produce	json
+//	@Param		meetingId	path		string	true	"ID rapat"
+//	@Success	200			{object}	core.State
+//	@Router		/webrtc/m/{meetingId}/participants [get]
 func (h *PresenceController) List(c *gin.Context) {
 	c.JSON(http.StatusOK, h.svc.State(c.Param("meetingId")))
 }
 
 // Meetings: GET /webrtc/meetings (rapat yang sedang aktif, untuk admin)
+//
+//	@Summary		Rapat yang sedang aktif
+//	@Description	In-memory; rapat tanpa peserta tidak tampil. startedAt = unix ms.
+//	@Tags			Presence
+//	@Produce		json
+//	@Success		200	{object}	MeetingsResponse
+//	@Router			/webrtc/meetings [get]
 func (h *PresenceController) Meetings(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"meetings": h.svc.ActiveMeetings()})
 }
@@ -75,6 +89,20 @@ func (h *PresenceController) Meetings(c *gin.Context) {
 // perubahan, plus {"type":"chat"|"history"|"command"}. Klien mengirim
 // {"type":"media","camera":bool,"mic":bool}, {"type":"chat","text":".."} dan (observer saja)
 // {"type":"admin","action":"mute_mic|camera_off|kick|allow","target":"userId"}.
+//
+//	@Summary		WebSocket presence, chat, perintah admin
+//	@Description	Upgrade ke WebSocket (Swagger UI tidak bisa menjalankannya; uji dengan wscat). Join = membuka socket.
+//	@Description	Server -> klien: {"type":"state","participants":[...],"blocked":[...]}, {"type":"history","messages":[{id,from,text,at}]}, {"type":"chat","id":1,"from":"u","text":"..","at":1764200000000}, {"type":"command","action":"mute_mic|camera_off|kick"}.
+//	@Description	Klien -> server: {"type":"media","camera":true,"mic":false}, {"type":"chat","text":".."} (maks 1000 karakter), {"type":"admin","action":"mute_mic|camera_off|kick|allow","target":"userId"} (hanya observer=true).
+//	@Description	Ping server tiap 15 dtk; putus bila tak ada pong/pesan 40 dtk.
+//	@Tags			Presence
+//	@Param			meetingId	path		string	true	"ID rapat"
+//	@Param			userId		query		string	true	"ID peserta"
+//	@Param			observer	query		bool	false	"true = admin, tidak terdaftar sebagai peserta"
+//	@Success		101			{string}	string	"Switching Protocols"
+//	@Failure		400			{object}	ErrorResponse	"userId kosong"
+//	@Failure		403			{object}	ErrorResponse	"userId diblokir admin (kick) sampai di-allow"
+//	@Router			/ws/m/{meetingId} [get]
 func (h *PresenceController) Socket(c *gin.Context) {
 	userID := c.Query("userId")
 	if userID == "" {

@@ -6,12 +6,15 @@ endif
 IMAGE ?= ghcr.io/ktyudha/go-conference:latest
 
 .DEFAULT_GOAL := help
-.PHONY: help dep run build run-build test docker-build docker-run docker-push deploy
+.PHONY: help swag dep run build run-build test docker-build docker-run docker-push deploy
 
 help: ## Tampilkan daftar perintah
 	@echo "Usage: make <target>"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z_-]+:.*## / {printf "  \033[32m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+swag: ## Generate docs/ (OpenAPI) dari anotasi handler
+	go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g main.go -o docs --outputTypes go,json,yaml --parseDependency --parseInternal
 
 dep: ## Rapikan dependency (go mod tidy)
 	go mod tidy

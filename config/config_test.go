@@ -30,3 +30,12 @@ func TestLoadTurn(t *testing.T) {
 		t.Fatalf("%+v", c)
 	}
 }
+
+func TestLoadTrimsCloudflareCredentials(t *testing.T) {
+	t.Setenv("CF_TURN_KEY_ID", "  abc123 \n")
+	t.Setenv("CF_TURN_API_TOKEN", "\ttok ")
+	c := Load()
+	if c.CFTurnKeyID != "abc123" || c.CFTurnAPIToken != "tok" {
+		t.Fatalf("%q %q", c.CFTurnKeyID, c.CFTurnAPIToken)
+	}
+}

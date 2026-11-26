@@ -14,9 +14,15 @@ func Register(r *gin.Engine, injector *do.Injector) {
 
 	peer := do.MustInvokeNamed[*controller.PeerController](injector, constants.PeerController)
 
+	presence := do.MustInvokeNamed[*controller.PresenceController](injector, constants.PresenceController)
+
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 
 	webrtc := r.Group("/webrtc")
 	webrtc.GET("/m/:meetingId/peers", peer.List)
+	webrtc.GET("/meetings", presence.Meetings)
+	webrtc.GET("/m/:meetingId/participants", presence.List)
 	webrtc.POST("/sdp/m/:meetingId/c/:userID/p/:peerId/s/:isSender", sdp.Handle)
+
+	r.GET("/ws/m/:meetingId", presence.Socket)
 }

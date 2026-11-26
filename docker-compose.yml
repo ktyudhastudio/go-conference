@@ -1,0 +1,9 @@
+services:
+  conference:
+    image: ${IMAGE:-ghcr.io/ktyudha/go-conference:latest}
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${APP_PORT:-8080}:8080/tcp"
+      - "${APP_UDP_PORT_MIN:-50000}-${APP_UDP_PORT_MAX:-50100}:${APP_UDP_PORT_MIN:-50000}-${APP_UDP_PORT_MAX:-50100}/udp"

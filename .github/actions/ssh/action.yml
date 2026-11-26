@@ -1,0 +1,15 @@
+name: ssh
+description: Muat SSH key dan percayai host tujuan
+inputs:
+  host:
+    required: true
+  key:
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ inputs.key }}
+    - shell: bash
+      run: ssh-keyscan -H ${{ inputs.host }} >> ~/.ssh/known_hosts

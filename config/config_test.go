@@ -3,6 +3,7 @@ package config
 import "testing"
 
 func TestLoadDefaults(t *testing.T) {
+	t.Setenv("APP_PORT", "")
 	t.Setenv("GOLANG_PORT", "")
 	t.Setenv("APP_ENV", "")
 	t.Setenv("STUN_SERVER", "")

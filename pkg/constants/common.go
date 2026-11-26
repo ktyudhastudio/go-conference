@@ -8,4 +8,8 @@ const (
 	SdpController  = "SdpController"
 	PeerService    = "PeerService"
 	PeerController = "PeerController"
+
+	PresenceHub        = "PresenceHub"
+	PresenceService    = "PresenceService"
+	PresenceController = "PresenceController"
 )

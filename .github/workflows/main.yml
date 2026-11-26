@@ -53,19 +53,19 @@ jobs:
       contents: read
       packages: read
     env:
-      DOCKER_HOST: ssh://${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}
+      DOCKER_HOST: ssh://${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
       IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ssh
         with:
-          host: ${{ vars.DEPLOY_HOST }}
+          host: ${{ secrets.DEPLOY_HOST }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
       - run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_USER: ${{ github.actor }}
-      - run: echo "APP_HOST=${{ vars.APP_HOST }}" > .env
+      - run: echo "APP_HOST=${{ secrets.APP_HOST }}" > .env
       - run: docker compose pull
       - run: docker compose up -d --no-build
       - run: docker image prune -f
